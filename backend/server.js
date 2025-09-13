@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
 const connectDB = require("./config/db");
 
 const userRoutes = require("./routes/userRoutes");
@@ -16,10 +17,10 @@ connectDB();
 
 const app = express();
 
-// ✅ Enable CORS
+// ✅ Enable CORS (for local development)
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
     credentials: true,
   })
 );
@@ -27,12 +28,27 @@ app.use(
 app.use(express.json());
 
 // API routes
-app.get("/", (req, res) => {
-  res.send("API is running");
-});
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
+
+// ✅ Deployment configuration
+const __dirname1 = path.resolve();
+
+if (process.env.NODE_ENV === "production") {
+  // Point to the React build folder
+  const frontendPath = path.join(__dirname1, "frontend", "build");
+  app.use(express.static(frontendPath));
+
+  // Serve React app for unknown routes
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.resolve(frontendPath, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send("API is running...");
+  });
+}
 
 // Error Handling middlewares
 app.use(notFound);
@@ -40,13 +56,13 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-// ✅ Use http server to attach socket.io
+// ✅ Create HTTP server and attach socket.io
 const server = createServer(app);
 
 const io = new Server(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -87,5 +103,9 @@ io.on("connection", (socket) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`🚀 Server started at http://localhost:${PORT}`);
+  console.log(
+    `🚀 Server running in ${
+      process.env.NODE_ENV || "development"
+    } mode on port ${PORT}`
+  );
 });

@@ -8,13 +8,12 @@ import {
   Text,
   useToast,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import Lottie from "lottie-react";
 import typingAnimation from "../Components/animations/typing.json";
 import io from "socket.io-client";
-
 import { ChatState } from "../context/chatProvider";
 import { getSender, getSenderFull } from "./Logisitics/chatLogistics";
 import ProfileModal from "./Authentication/miscellaneous/ProfileModal";
@@ -33,17 +32,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [istyping, setIsTyping] = useState(false);
   const toast = useToast();
 
+  const typingTimeoutRef = useRef(null);
+  const lastTypingTimeRef = useRef(null);
+
   const { selectedChat, setSelectedChat, user, notification, setNotification } =
     ChatState();
-
-  const defaultOptions = {
-    loop: true,
-    autoplay: true,
-    animationData: typingAnimation,
-    rendererSettings: {
-      preserveAspectRatio: "xMidYMid slice",
-    },
-  };
 
   const fetchMessages = async () => {
     if (!selectedChat) return;
@@ -124,13 +117,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   useEffect(() => {
     fetchMessages();
     selectedChatCompare = selectedChat;
+    setTyping(false); // reset typing state when switching chats
     // eslint-disable-next-line
   }, [selectedChat]);
 
   useEffect(() => {
     const messageHandler = (newMessageRecieved) => {
       if (
-        !selectedChatCompare || // if chat is not selected or doesn't match current chat
+        !selectedChatCompare ||
         selectedChatCompare._id !== newMessageRecieved.chat._id
       ) {
         if (!notification.find((n) => n._id === newMessageRecieved._id)) {
@@ -158,16 +152,19 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       setTyping(true);
       socket.emit("typing", selectedChat._id);
     }
-    let lastTypingTime = new Date().getTime();
-    var timerLength = 3000;
-    setTimeout(() => {
-      var timeNow = new Date().getTime();
-      var timeDiff = timeNow - lastTypingTime;
-      if (timeDiff >= timerLength && typing) {
+
+    lastTypingTimeRef.current = Date.now();
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      const timeNow = Date.now();
+      const timeDiff = timeNow - lastTypingTimeRef.current;
+      if (timeDiff >= 3000 && typing) {
         socket.emit("stop typing", selectedChat._id);
         setTyping(false);
       }
-    }, timerLength);
+    }, 3000);
   };
 
   return (
@@ -231,21 +228,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
               </div>
             )}
 
-            <FormControl
-              onKeyDown={sendMessage}
-              id="first-name"
-              isRequired
-              mt={3}
-            >
-              {istyping ? (
-                <div>
-                  <Lottie
-                    options={defaultOptions}
-                    width={70}
-                    style={{ marginBottom: 15, marginLeft: 0 }}
-                  />
-                </div>
-              ) : null}
+            <FormControl onKeyDown={sendMessage} isRequired mt={3}>
+              {istyping && (
+                <Lottie
+                  animationData={typingAnimation}
+                  loop
+                  style={{ width: 70, marginBottom: 15, marginLeft: 0 }}
+                />
+              )}
               <Input
                 variant="filled"
                 bg="#E0E0E0"
@@ -257,7 +247,6 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
           </Box>
         </>
       ) : (
-        // when no chat is selected
         <Box
           display="flex"
           alignItems="center"
