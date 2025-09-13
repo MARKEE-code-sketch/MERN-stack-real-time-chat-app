@@ -1,5 +1,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@300&display=swap");
 
 body {
-  font-family: "Work Sans", sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+
+  /* Override Chakra */
+  font-family: "Work Sans", sans-serif !important;
+  background: url("./assets/Charismatic-Cursive-Design.png") no-repeat center
+    center fixed !important;
+  background-size: cover !important;
+  color: var(--chakra-colors-gray-800); /* keep Chakra text color */
 }
