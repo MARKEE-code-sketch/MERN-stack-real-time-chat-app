@@ -20,7 +20,7 @@ import ProfileModal from "./Authentication/miscellaneous/ProfileModal";
 import ScrollableChat from "./useAvatar/ScrollableChat";
 import UpdateGroupChatModal from "./Authentication/miscellaneous/UpdateGroupChatModal";
 
-const ENDPOINT = "http://localhost:5000"; // change after deployment
+const ENDPOINT = process.env.REACT_APP_API_URL || "http://localhost:5000";
 var socket, selectedChatCompare;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
